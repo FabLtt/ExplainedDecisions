@@ -2,9 +2,11 @@
 """
 Created on Tue Oct 20 09:44:37 2020
 
-@author: fa17936
+@author: FabLtt
 
 Scope: perform Bayesian Optimization on ANN composed by alternating LSTM and Dropout layers 
+
+Note: code developed on tensorflow 1.15.0 and sklearn 0.23.1
 """
 # Supress NaN warnings
 import warnings
@@ -23,9 +25,7 @@ import tensorflow.keras.initializers
 import statistics
 from sklearn import metrics
 
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense, LSTM, Dropout
-
+import UtilityFunctions as uf
 
 from tensorflow.keras.callbacks import EarlyStopping
 from sklearn.model_selection import StratifiedShuffleSplit 
@@ -36,14 +36,18 @@ from bayes_opt.logger import JSONLogger
 from bayes_opt.event import Events
 
 
-
 print("\n\n starting..")
 
+# Choose expertise to perform Bayesian Optimization on
+expertise = 'Novice' # options: 'Novice' | 'Expert'
+step = 1
+
 # Open the dataset file
-file = open("./dataset/DatasetFileMultiClassPred_BothHerders_WrtGoal_Extended","rb")
+file = open("./Datasets/DatasetFile_"+expertise+"_step"+str(step),"rb")
 
 # Load the dataset and select the columns referred by 'Labels'
 Dataset_full_df = pickle.load(file)
+file.close()
 
 Labels = ['h_t0 rel dist', 'h_t1 rel dist', 'h_t2 rel dist', 'h_t3 rel dist', 'h_t0 rel angle', 'h_t1 rel angle', 'h_t2 rel angle', 'h_t3 rel angle', 
           'h_goal rel dist', 't0_goal rel dist', 't1_goal rel dist', 't2_goal rel dist', 't3_goal rel dist',
@@ -64,34 +68,24 @@ print("\n there are ", n_features," features!")
 
 Dataset = Dataset_df.values
 
-# Create the sequences of features and target outputs from the dataset
-def create_dataset(dataset, look_back=1):
-    dataX, dataY = [], []
-    for i in range(len(dataset)-look_back-1):
-        a = dataset[i:(i+look_back), :-1]
-        dataX.append(a)
-        dataY.append(dataset[i + look_back, -1])
-    return dataX, dataY 
 
+# Set sequence length 'look_back' and decision horizon 'look_forward'= [1, 8, 16, 32]
+look_back = 25
+look_forward = 1 
 
-look_back = 25  # Sequence length
-sequences = []
-targets = []
+sequences, targets = [],[]
 
-herders_tot = int(max(Dataset[:,0]))
-trial_tot = int(max(Dataset[:,1]))
+herders_tot = int(max(Dataset[:,0])) + 1
+trial_tot = int(max(Dataset[:,1])) + 1
 
 # A sequence can refer to only one Herder ID and one Trial ID
 for herder_id in range(herders_tot):
     for trial_id in range(trial_tot):
         Dtst = Dataset_df[(Dataset_df["Herder_id"]==herder_id) & (Dataset_df["Trial_id"]==trial_id)].values[:,2:]
-        seq, tar = create_dataset(Dtst, look_back)
+        seq, tar = uf.create_dataset(Dtst, look_back, look_forward)
         sequences = sequences + seq
         targets = targets + tar
 
-print("samples before splitting:", len(targets))
-# for el in range(5):
-#     print("samples in class ",el," : " , round(targets.count(el)/len(targets),2))
     
 train = np.array(sequences)
 train_targets = np.array(targets)
@@ -107,53 +101,12 @@ for train_index, test_index in sss.split(train, train_targets):
     y_train, y_test = train_targets[train_index], train_targets[test_index]
     
     
-print("samples after splitting:", y_train.shape)
-
 # Rename training samples to be fed the ANN
 dummies = get_dummies(y_train)
 targets_dummies = dummies.values 
 
 x = X_train
 y = targets_dummies
-
-
-
-# Nicely formatted time string
-def hms_string(sec_elapsed):
-    h = int(sec_elapsed / (60 * 60))
-    m = int((sec_elapsed % (60 * 60)) / 60)
-    s = sec_elapsed % 60
-    return "{}:{:>02}:{:>05.2f}".format(h, m, s)
-
-
-def generate_model(dropout, neuronPct, neuronShrink):
-    # We start with some percent of 5000 starting neurons on 
-    # the first hidden layer.
-    neuronCount = int(neuronPct * 2500)
-    
-    # Construct neural network
-    model = Sequential()
-
-    # So long as there would have been at least 25 neurons and 
-    # fewer than 10 layers, create a new layer.
-    layer = 0
-    while neuronCount>25 and layer<10:
-        # The first (0th) layer needs an input input_dim(neuronCount)
-        if layer==0:
-            model.add(LSTM(neuronCount,input_shape=(look_back, n_features), return_sequences=True, dropout=dropout+0.1))
-        else:
-            model.add(LSTM(neuronCount,input_shape=(look_back, n_features), return_sequences=True, dropout=dropout+0.1)) 
-        layer += 1
-
-        # Add dropout after each LSTM layer
-        model.add(Dropout(dropout,input_shape=(look_back, n_features)))
-
-        # Shrink neuron count for each layer
-        neuronCount = int(neuronCount * neuronShrink)
-        
-    model.add(LSTM(neuronCount,input_shape=(look_back, n_features), dropout=dropout+0.1)) 
-    model.add(Dense(5,activation='softmax')) # Output multi
-    return model
 
 
 def evaluate_network(dropout,lr,neuronPct,neuronShrink):
@@ -166,7 +119,6 @@ def evaluate_network(dropout,lr,neuronPct,neuronShrink):
     mean_benchmark = []
     epochs_needed = []
     num = 0
-    
 
     # Loop through samples
     for train_n, val_n in boot.split(x,y):
@@ -179,7 +131,7 @@ def evaluate_network(dropout,lr,neuronPct,neuronShrink):
         x_val = x[val_n]
         y_val = y[val_n]
 
-        model = generate_model(dropout, neuronPct, neuronShrink)
+        model = uf.generate_model(dropout, neuronPct, neuronShrink,n_features,look_back)
         model.compile(loss='categorical_crossentropy', optimizer=Adam(lr=lr)) 
         monitor = EarlyStopping(monitor='val_loss', min_delta=1e-3, 
         patience=10, verbose=0, restore_best_weights=True)
@@ -212,7 +164,7 @@ pbounds = {'dropout': (0.1, 0.399),
 optimizer = BayesianOptimization(f=evaluate_network, pbounds=pbounds, verbose=0, random_state=1)
 
 
-logger = JSONLogger(path='./checkpoint/BayesOpt_logs.json')
+logger = JSONLogger(path='./Checkpoint/BayesOpt_'+expertise+'_step'+str(step)+'_logs.json')
 optimizer.subscribe(Events.OPTIMIZATION_STEP, logger)
 
 optimizer.maximize(init_points=10, n_iter=20,)

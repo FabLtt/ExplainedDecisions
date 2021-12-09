@@ -2,40 +2,55 @@
 """
 Created on Fri Oct 23 17:58:17 2020
 
-@author: fa17936
+@author: FabLtt
 
 Scope: compute SHAP values 
+
+Note: code developed on tensorflow 1.15.0 and sklearn 0.23.1
 """
 import pickle   
 import numpy as np
+
+import UtilityFunctions as uf
+
 from tensorflow.keras.models import load_model
 import tensorflow as tf
 import shap
-import pandas as pd
 
 import logging, os
 logging.disable(logging.WARNING)
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
+# Select model identifiers 
+model_id = '11032021'
+file_id = '001'
+
+# Select the expertise and sampling time 'step' 
+expertise = 'Novice' # options: 'Novice' | 'Expert'
+step = 1 # options: 1 | 2 | 4 
+
 # Select the number of samples from the training set to use as background and the number of samples to explain 
 n_background = 1000
 n_samples = 2000
 
-# Select the decision horizon [1, 8, 16, 32]
+# Select the sequence length 'look_back' and decision horizon 'look_forward' [1, 8, 16, 32]
+look_back = 25   # Sequence length
 look_forward = 1
 
 # Notice that DeepExplainer is not compatible with TF2
 print("\n\n starting on tf version ", tf.__version__, "and shap version", shap.__version__)
 
 # Load the dataset, the trained model and training and test indexes' files
-file = open("./dataset/DatasetFileMultiClassPred_BothHerders_WrtGoal_Extended","rb")
+file = open("./Datasets/DatasetFile_"+expertise+"_step"+str(step),"rb")  
 
-directory = "./checkpoint/"
-file_model_name ="Model_13052021_001"
-file_to_open = open(directory+'TrainTestSets_indexes_001',"rb")
+directory = "./Checkpoint/"
+file_model_name = directory+"Model"+expertise+"Step"+str(step)+"_"+model_id+"_"+file_id                  
+file_name_index = directory+"Model"+expertise+"Step"+str(step)+"_"+model_id+"_"+file_id +"_TrainTestSets"   # Where indexes of training and test samples are saved
+
+file_to_open = open(file_name_index,"rb")
 
 Dataset_full_df = pickle.load(file)
-
+file.close()
 
 # From the dataset, selected the following columns (input feature set)
 # Notice that they must coincide with the ones used in the training phase 
@@ -58,29 +73,19 @@ print("\n there are ", n_features," features!")
 
 Dataset = Dataset_df.values
 
-# Create the sequences of features and target outputs from the datas
-def create_dataset(dataset, look_back=1, look_forward=1):
-    dataX, dataY = [], []
-    for i in range(len(dataset)-look_back-look_forward):
-        a = dataset[i:(i+look_back), :-1]
-        dataX.append(a)
-        dataY.append(dataset[i + look_back + look_forward, -1])
-    return dataX, dataY 
-
-look_back = 25   # Sequence length
 sequences = []
-targets = []
 
-herders_tot = int(max(Dataset[:,0]))
-trial_tot = int(max(Dataset[:,1]))
+herders_tot = int(max(Dataset[:,0])) + 1
+trial_tot = int(max(Dataset[:,1])) + 1
 
 # A sequence can refer to only one Herder ID and one Trial ID
 for herder_id in range(herders_tot):
     for trial_id in range(trial_tot):
         Dtst = Dataset_df[(Dataset_df["Herder_id"]==herder_id) & (Dataset_df["Trial_id"]==trial_id)].values[:,2:]
-        seq, tar = create_dataset(Dtst, look_back, look_forward)
+        seq, tar = uf.create_dataset(Dtst, look_back, look_forward)
         sequences = sequences + seq
-        targets = targets + tar
+        
+sequences_array = np.array(sequences)
 
 # Load the training and test samples 
 indexes_data = pickle.load(file_to_open)
@@ -89,28 +94,14 @@ file_to_open.close()
 train_index = indexes_data[0]
 test_index = indexes_data[1]
 
-sequences_array = np.array(sequences)
-targets_array = np.array(targets)
-
 X_train, X_test = sequences_array[train_index], sequences_array[test_index]
-y_train, y_test = targets_array[train_index], targets_array[test_index]
-  
-dummies_train = pd.get_dummies(y_train)
-
-train = X_train
-train_target = dummies_train.values    
-    
-dummies_test = pd.get_dummies(y_test)
-
-test = X_test
-test_target = dummies_test.values
 
 # Load the model
 model = load_model(directory + file_model_name)
 
 # Select the background samples and the test samples to explain
-background = train[np.random.choice(train.shape[0], n_background, replace=False)]
-samples = test #[np.random.choice(test.shape[0], n_samples, replace=False)]
+background = X_train[np.random.choice(X_train.shape[0], n_background, replace=False)]
+samples = X_test #[np.random.choice(X_test.shape[0], n_samples, replace=False)]
 
 # Explain the model's predictions using SHAP
 explainer = shap.DeepExplainer(model, background)
