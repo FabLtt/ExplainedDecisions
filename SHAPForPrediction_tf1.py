@@ -43,7 +43,7 @@ print("\n\n starting on tf version ", tf.__version__, "and shap version", shap._
 # Load the dataset, the trained model and training and test indexes' files
 file = open("./Datasets/DatasetFile_"+expertise+"_step"+str(step),"rb")  
 
-directory = "./Checkpoint/"
+directory = "./checkpoint/"
 file_model_name = directory+"Model"+expertise+"Step"+str(step)+"_"+model_id+"_"+file_id                  
 file_name_index = directory+"Model"+expertise+"Step"+str(step)+"_"+model_id+"_"+file_id +"_TrainTestSets"   # Where indexes of training and test samples are saved
 

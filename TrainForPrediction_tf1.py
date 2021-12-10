@@ -44,8 +44,8 @@ file = open("./Datasets/DatasetFile_"+expertise+"_step"+str(step),"rb")
 
 # Set the name to be saved for the model that will be trained
 file_id = '001'
-checkpoint_file = "./Checkpoint/Model"+expertise+"Step"+str(step)+"_"+ datetime.datetime.now().strftime("%d%m%Y")+"_"+file_id                  
-file_name_index = "./Checkpoint/Model"+expertise+"Step"+str(step)+"_"+ datetime.datetime.now().strftime("%d%m%Y")+"_"+file_id +"_TrainTestSets"   # Where indexes of training and test samples are saved
+checkpoint_file = "./checkpoint/Model"+expertise+"Step"+str(step)+"_"+ datetime.datetime.now().strftime("%d%m%Y")+"_"+file_id                  
+file_name_index = "./checkpoint/Model"+expertise+"Step"+str(step)+"_"+ datetime.datetime.now().strftime("%d%m%Y")+"_"+file_id +"_TrainTestSets"   # Where indexes of training and test samples are saved
 
 
 # Set sequence length 'look_back' and decision horizon 'look_forward'= [1, 8, 16, 32]

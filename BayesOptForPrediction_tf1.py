@@ -164,7 +164,7 @@ pbounds = {'dropout': (0.1, 0.399),
 optimizer = BayesianOptimization(f=evaluate_network, pbounds=pbounds, verbose=0, random_state=1)
 
 
-logger = JSONLogger(path='./Checkpoint/BayesOpt_'+expertise+'_step'+str(step)+'_logs.json')
+logger = JSONLogger(path='./checkpoint/BayesOpt_'+expertise+'_step'+str(step)+'_logs.json')
 optimizer.subscribe(Events.OPTIMIZATION_STEP, logger)
 
 optimizer.maximize(init_points=10, n_iter=20,)

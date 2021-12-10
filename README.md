@@ -15,7 +15,7 @@ Running `SHAPForPrediction_tf1.py` will apply SHAP DeepExplainer [2] to the trai
 
 ------------------------------------------------------------------------------------------
 
-The models presented and analysed in [1] are made available at [Checkpoint/FinalModels/](Checkpoint/FinalModels/README.md) in this repository; a glossary of models names, ANNs hyperparamenters and training set-up are reported in `FinalModels_details.xlsx`.
+The models presented and analysed in [1] are made available at [Checkpoint/FinalModels/](checkpoint/FinalModels/) in this repository; a glossary of models names, ANNs hyperparamenters and training set-up are reported in `FinalModels_details.xlsx`.
 
 Performances of the trained ANNs analysed in [1] have been measured on test samples with `Performance_Notebook.ipynb`.
 
