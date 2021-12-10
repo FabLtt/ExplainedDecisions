@@ -5,6 +5,8 @@ Created on Wed Jun  3 15:26:17 2020
 @author: FabLtt
 
 Scope: Utility functions to coumpute input features 
+
+Note: code developed on tensorflow 1.15.0
 """
 
 import numpy as np

@@ -15,7 +15,7 @@ import math
 import numpy as np
 
 
-def ImportDatasetFromJsonFileFull_MultiPredWrtGoal(directory, herder, starting_string="LABELED_", both=False, coding=True, alltime=False, after=False, both_predict=False, extended=False):
+def ImportDatasetFromJsonFileFull_MultiPredWrtGoal(directory, herder, starting_string="LABELED_", both=False, coding=True, after=False, both_predict=False, extended=False):
     
     N_features = 43 + 30
     
@@ -36,9 +36,6 @@ def ImportDatasetFromJsonFileFull_MultiPredWrtGoal(directory, herder, starting_s
                 file_name_targets = directory + '/' + data_train['META']['ReferenceID'] + data_train['META']['FileName']+'_features'
                 file_name_herders = directory + '/' + data_train['META']['ReferenceID'] + data_train['META']['FileName']+'_features_herders'
                 
-                if alltime == True:
-                    file_name_targets = directory + '/' + data_train['META']['ReferenceID'] + data_train['META']['FileName']+'_features_ALLTIME'
-                    file_name_herders = directory + '/' + data_train['META']['ReferenceID'] + data_train['META']['FileName']+'_features_herders_ALLTIME'
                  
                 with open(file_name_targets,'rb') as f:
                     features_targets = pickle.load(f)
