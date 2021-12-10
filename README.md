@@ -1,6 +1,6 @@
 This repository contains the Python functions and scripts for Optimizing, Training and Explaining ANN for selection strategies predictions as presented in [1]. 
 
-From experimental data, relevant state variable (e.g., relative distances, velocity, direction of motion) are computed in `ExtractFeaturesFromExperimentalData_Notebook.ipynb` to create the datasets from which input sequences and label for the Artificial Neural Networks (ANNs) will be extracted in `CreateFeatureProcessedDatasets_Notebook.ipynb` for two different expertise; Novice and Expert experimental data. 
+From experimental data, relevant state variable (e.g., relative distances, velocity, direction of motion) are computed in [ExtractFeaturesFromExperimentalData_Notebook](ExtractFeaturesFromExperimentalData_Notebook.ipynb) to create the datasets from which input sequences and label for the Artificial Neural Networks (ANNs) will be extracted in `CreateFeatureProcessedDatasets_Notebook.ipynb` for two different expertise; Novice and Expert experimental data. 
 
 The experimental data can be found in [Data/](Data/) folder of this repository. 
 
