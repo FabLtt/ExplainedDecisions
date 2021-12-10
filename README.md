@@ -2,7 +2,7 @@ This repository contains the Python functions and scripts for Optimizing, Traini
 
 From experimental data, relevant state variable (e.g., relative distances, velocity, direction of motion) are computed in `ExtractFeaturesFromExperimentalData_Notebook.ipynb` to create the datasets from which input sequences and label for the Artificial Neural Networks (ANNs) will be extracted in `CreateFeatureProcessedDatasets_Notebook.ipynb` for two different expertise; Novice and Expert experimental data. 
 
-The experimental data can be found in [/Data](Data/README.md) folder of this repository. 
+The experimental data can be found in [Data/](Data/) folder of this repository. 
 
 The datasets used in [1] are made available in the public reporitory [Datasets](https://osf.io/wgk8e/?view_only=8aec18499ed8457cb296032545963542)
 
