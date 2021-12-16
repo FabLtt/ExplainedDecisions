@@ -4,7 +4,7 @@ From experimental data, relevant state variable (e.g., relative distances, veloc
 
 The experimental data can be found in [Data/](Data/) folder of this repository. 
 
-The datasets used in [1] are made available in the public reporitory [Datasets](https://osf.io/wgk8e/?view_only=8aec18499ed8457cb296032545963542)
+The datasets used in [1] are made available in the public repository [Datasets](https://osf.io/wgk8e/?view_only=8aec18499ed8457cb296032545963542)
 
 Running [BayesOptForPrediction_tf1](BayesOptForPrediction_tf1.py) will perform Bayesian Optimization for ANNs  hyperparamenters; learning rate, number of hidden layers, number of neurons in each layers and their dropout rate based on previously created processed datasets. 
 From the BayesOpt_logs file select the hyperparameters for the best (i.e., lowest 'target' value) ANN to be trained. 
