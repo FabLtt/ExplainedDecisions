@@ -22,20 +22,21 @@ logging.disable(logging.WARNING)
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
 # Select model identifiers 
-model_id = '11032021'
+model_id = '26022022'
 file_id = '001'
 
 # Select the expertise and sampling time 'step' 
 expertise = 'Novice' # options: 'Novice' | 'Expert'
-step = 1 # options: 1 | 2 | 4 
+key_expertise = 0   # options: 0 = 'Novice'  | 1 = 'Expert'
+step = 2 # options: 1 | 2 | 4 
 
 # Select the number of samples from the training set to use as background and the number of samples to explain 
-n_background = 1000
-n_samples = 2000
+n_background = 200
+n_samples = 6000
 
 # Select the sequence length 'look_back' and decision horizon 'look_forward' [1, 8, 16, 32]
 look_back = 25   # Sequence length
-look_forward = 1
+look_forward = 16
 
 # Notice that DeepExplainer is not compatible with TF2
 print("\n\n starting on tf version ", tf.__version__, "and shap version", shap.__version__)
@@ -45,7 +46,11 @@ file = open("./Datasets/DatasetFile_"+expertise+"_step"+str(step),"rb")
 
 directory = "./checkpoint/"
 file_model_name = directory+"Model"+expertise+"Step"+str(step)+"_"+model_id+"_"+file_id                  
-file_name_index = directory+"Model"+expertise+"Step"+str(step)+"_"+model_id+"_"+file_id +"_TrainTestSets"   # Where indexes of training and test samples are saved
+
+if key_expertise == 0:
+    file_name_index = "TrainTestSets_Novice_step"+str(step)+"_thor"+str(look_forward)
+else:
+    file_name_index = "TrainTestSets_Expert_step"+str(step)+"_thor"+str(look_forward)
 
 file_to_open = open(file_name_index,"rb")
 
@@ -78,12 +83,12 @@ sequences = []
 herders_tot = int(max(Dataset[:,0])) + 1
 trial_tot = int(max(Dataset[:,1])) + 1
 
-# A sequence can refer to only one Herder ID and one Trial ID
 for herder_id in range(herders_tot):
     for trial_id in range(trial_tot):
         Dtst = Dataset_df[(Dataset_df["Herder_id"]==herder_id) & (Dataset_df["Trial_id"]==trial_id)].values[:,2:]
-        seq, tar = uf.create_dataset(Dtst, look_back, look_forward)
+        seq, tar, seq_lbl = uf.create_dataset(Dtst, look_back, look_forward)
         sequences = sequences + seq
+        
         
 sequences_array = np.array(sequences)
 
@@ -91,17 +96,20 @@ sequences_array = np.array(sequences)
 indexes_data = pickle.load(file_to_open)
 file_to_open.close()
 
-train_index = indexes_data[0]
-test_index = indexes_data[1]
+type_index = indexes_data[0]
+train_index = indexes_data[1]
+test_index = indexes_data[2]
 
-X_train, X_test = sequences_array[train_index], sequences_array[test_index]
+X_senior = sequences_array[type_index]
+X_train, X_test = X_senior[train_index], X_senior[test_index]
+
 
 # Load the model
 model = load_model(directory + file_model_name)
 
 # Select the background samples and the test samples to explain
 background = X_train[np.random.choice(X_train.shape[0], n_background, replace=False)]
-samples = X_test #[np.random.choice(X_test.shape[0], n_samples, replace=False)]
+samples = X_test [np.random.choice(X_test.shape[0], n_samples, replace=False)]
 
 # Explain the model's predictions using SHAP
 explainer = shap.DeepExplainer(model, background)

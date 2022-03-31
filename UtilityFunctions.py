@@ -156,20 +156,61 @@ def angle_from_goal(agent_pos,goal_pos):
     return angle
 
 def create_dataset(dataset, look_back=1, look_forward=1):
-    dataX, dataY = [], []
+    dataX, dataY, dataZ = [], [], []
     for i in range(len(dataset)-look_back-look_forward):
         a = dataset[i:(i+look_back), :-1]
+        b = np.append(dataset[i:(i+look_back), -1],dataset[i + look_back + look_forward, -1])
         dataX.append(a)
         dataY.append(dataset[i + look_back + look_forward, -1])
-    return dataX, dataY 
+        dataZ.append(b)
+        if len(b) > 26:
+            print(len(b))
+    return dataX, dataY, dataZ
 
-def generate_model(dropout, neuronPct, neuronShrink,n_features,look_back):
+
+def checkSamplesType(sequences_labels_array):
+
+    targets_labels = []
+
+    for ww_index in range(len(sequences_labels_array)): 
+
+        arr = sequences_labels_array[ww_index]
+
+        is_SameSeq_SameTar = np.all(arr == arr[0])
+        is_SameSeq_DiffTar = np.all(arr[:-1] == arr[0]) & (arr[-1] != arr[-2])
+        is_DiffSeq_SameTar = np.any(arr[:-1] != arr[0]) & (arr[-1] == arr[-2])
+        is_DiffSeq_DiffTar = np.any(arr[:-1] != arr[0]) & (arr[-1] != arr[-2])
+
+        if is_SameSeq_SameTar:
+            targets_labels.append(0)
+        if is_SameSeq_DiffTar:
+            targets_labels.append(1)
+        if is_DiffSeq_SameTar:
+            targets_labels.append(2)
+        if is_DiffSeq_DiffTar:
+            targets_labels.append(3)
+            
+    occurrences, count = np.unique(targets_labels, return_counts=True)
+
+    print('')
+    print("Non trasitioning and non switching sequences %0.2f %%" %(count[0]/len(sequences_labels_array)*100))
+    print("Non Transitioning and switching sequences    %0.2f %%" %(count[1]/len(sequences_labels_array)*100))
+    print("Transitioning and non switching sequences    %0.2f %%" %(count[2]/len(sequences_labels_array)*100))
+    print("Transitioning and switching sequences        %0.2f %%" %(count[3]/len(sequences_labels_array)*100))    
+
+    targets_labels_array = np.array(targets_labels)
+    
+    return targets_labels_array
+
+
+def generate_model(dropout, neuronPct, neuronShrink, look_back, n_features, n_classes = 5):
+
     neuronCount = int(neuronPct * 2500)
     
     # Construct neural network
     model = Sequential()
+
     layer = 0
-    
     while neuronCount>25 and layer<10:
         if layer==0:
             model.add(LSTM(neuronCount,input_shape=(look_back, n_features), return_sequences=True, dropout=dropout+0.1))
@@ -179,8 +220,10 @@ def generate_model(dropout, neuronPct, neuronShrink,n_features,look_back):
 
         # Add dropout after each LSTM layer
         model.add(Dropout(dropout,input_shape=(look_back, n_features)))
+
+        # Shrink neuron count for each layer
         neuronCount = int(neuronCount * neuronShrink)
         
     model.add(LSTM(neuronCount,input_shape=(look_back, n_features), dropout=dropout+0.1)) 
-    model.add(Dense(5,activation='softmax')) # Output multi
+    model.add(Dense(n_classes,activation='softmax')) 
     return model

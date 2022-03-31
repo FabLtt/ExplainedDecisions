@@ -39,8 +39,6 @@ print("\n\n starting on tf version ", tf.__version__)
 expertise = 'Novice' # options: 'Novice' | 'Expert'
 step = 1
 
-# Open the dataset file
-file = open("./Datasets/DatasetFile_"+expertise+"_step"+str(step),"rb")  
 
 # Set the name to be saved for the model that will be trained
 file_id = '001'
@@ -55,6 +53,17 @@ look_forward = 1
 # Set training set and test set size
 train_samples = 21000
 test_samples = 2000
+
+# Set if type of samples need to be balanced (True) or extracted with the same distribution as in the whole dataset (False)
+balancedTypes = True
+
+# Set training paramenters
+learningRate_val = 0.0018
+patience_val  = 15
+epochs_val = 100
+
+# Open the dataset file
+file = open("./Datasets/DatasetFile_"+expertise+"_step"+str(step),"rb")  
 
 
 # Load the dataset and select the columns referred by 'Labels'
@@ -81,35 +90,77 @@ print("\n there are ", n_features," features")
 
 Dataset = Dataset_df.values
 
-sequences, targets = [],[]
+sequences, sequences_labels, targets = [],[],[]
 
-herders_tot = int(max(Dataset[:,0]))+1
-trial_tot = int(max(Dataset[:,1]))+1
+herders_tot = int(max(Dataset[:,0])) + 1
+trial_tot = int(max(Dataset[:,1])) + 1
 
-# A sequence can refer to only one Herder ID and one Trial ID
-for herder_id in range(herders_tot): 
+for herder_id in range(herders_tot):
     for trial_id in range(trial_tot):
         Dtst = Dataset_df[(Dataset_df["Herder_id"]==herder_id) & (Dataset_df["Trial_id"]==trial_id)].values[:,2:]
-        seq, tar = uf.create_dataset(Dtst, look_back, look_forward)
+        seq, tar, seq_lbl = uf.create_dataset(Dtst, look_back, look_forward)
         sequences = sequences + seq
         targets = targets + tar
+        sequences_labels = sequences_labels + seq_lbl
+        
+sequences_array = np.array(sequences)
+targets_array = np.array(targets)
+sequences_labels_array = np.array(sequences_labels)
 
-train = np.array(sequences)
-train_target = np.array(targets)
+occurrences, count = np.unique(targets, return_counts=True)
+n_classes = len(count)
 
+all_indexes = []
+for w_index in range(len(targets)):
+    all_indexes.append(w_index)
+all_indexes_array = np.array(all_indexes)
+print('total number of samples:',len(all_indexes))
+
+print('Distribution of samples by type on %i samples'%len(sequences_labels_array))
+targets_labels_array = uf.checkSamplesType(sequences_labels_array)
+
+
+if balancedTypes == True:
+    # Split samples to balance type of samples 
+    less_represented_class_size = 6000
+    type_index = []
+    for c in np.unique(targets_labels_array):
+        indices = np.where(targets_labels_array == c)[0]
+        sampled_indices = np.random.choice(indices, size=less_represented_class_size, replace=False)
+        type_index.extend(sampled_indices)
+else:   
+    # Split samples to balance type of samples to reflect their distribution in the whole dataset
+    sss = StratifiedShuffleSplit(train_size=len(targets_array)-n_classes, n_splits=1, 
+                                  test_size=n_classes, random_state=0)  
+    
+    
+X = sequences_array[type_index]
+y = targets_array[type_index]
+Z = sequences_labels_array[type_index]
+
+print('Distribution of samples by type, after splitting')
+temp = uf.checkSamplesType(Z)
+del temp    
+
+
+    
 # Check if the size of training and test set overflow the total available number of samples
-if (test_samples+train_samples)>train.shape[0]:
-    train_samples = train.shape[0] - 2000
+if (test_samples+train_samples)>X.shape[0]:
+    train_samples = X.shape[0] - 2000
     print("max samples reached (",train_samples,")!")
+   
 
 # Randomly select 'train_samples' and 'test_samples' samples from the total available ones (i.e. 'train' and 'train_target')
 sss = StratifiedShuffleSplit(train_size=train_samples, n_splits=1, 
                              test_size=test_samples, random_state=0)  
 
-for train_index, test_index in sss.split(train, train_target):
-    X_train, X_test = train[train_index], train[test_index]
-    y_train, y_test = train_target[train_index], train_target[test_index]
+for train_index, test_index in sss.split(X, y):
+    X_train, X_test = X[train_index], X[test_index]
+    y_train, y_test = y[train_index], y[test_index]
+    Z_train, Z_test = Z[train_index], Z[test_index]
     
+del X, y, Z
+
     
 print("training samples :", y_train.shape)
 print("testing samples :", y_test.shape)
@@ -139,14 +190,14 @@ model = uf.generate_model(dropout=0.1145, neuronPct=0.1012, neuronShrink=0.1793,
 # Compile the ANN model
 X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.1)
 
-earlStop = EarlyStopping(monitor='val_loss', min_delta=1e-3, patience=10, restore_best_weights=True, verbose = 1)
+earlStop = EarlyStopping(monitor='val_loss', min_delta=1e-3, patience=patience_val, restore_best_weights=True, verbose = 1)
 
-adam = Adam(lr=0.0018) 
+adam = Adam(lr=learningRate_val) 
 
 model.compile(loss='categorical_crossentropy', optimizer=adam, metrics=['acc'])
 
 # Fit data to ANN model
-history = model.fit(X_train, y_train, validation_data=[X_val, y_val], batch_size=32, epochs=100, verbose=0,callbacks=[earlStop])
+history = model.fit(X_train, y_train, validation_data=[X_val, y_val], batch_size=32, epochs=epochs_val, verbose=0,callbacks=[earlStop])
 
 epochs = earlStop.stopped_epoch
 
